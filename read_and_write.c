@@ -103,19 +103,3 @@ static struct file_operations ouichefs_file_ops = {
         .read = read,
         .write = write,
 };
-
-static struct proc_dir_entry *proc_dir_entry;
-static int __init first_ouichefs_init(void){
-        pr_info("HELLO\n");
-        proc_dir_entry = proc_create("first_ouichefs", 0, NULL, &ouichefs_file_ops);
-        return 0;
-}
-
-static void __exit first_ouichefs_exit(void){
-        pr_info("END\n");
-        remove_proc_entry("first_ouichefs", NULL);
-}
-
-
-module_init(first_ouichefs_init);
-module_exit(first_ouichefs_exit);

@@ -3,13 +3,15 @@
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #define SIZE_MIN 1024
 #define SIZE_MAX 4096
 #define NB_FIC 5
-#define AJOUT 10
+#define AJOUT 100
 
-void create_file(char* filename, size_t size){
+void create_fd(char* fdname, size_t size){
 
     double time_read = 0.0;
     double time_write = 0.0;
@@ -17,55 +19,58 @@ void create_file(char* filename, size_t size){
     clock_t end;
     int offset;
     char data[size];
-    char chaine[size];
-    chaine[size-1] = '\0';
+    char chaine[1];
+    int write_offset[AJOUT];
 
-    FILE * file = NULL;
-    if((file = fopen(filename, "w+")) == NULL){
-        printf("Error: not open\n");
-        return;
+    int fd;
+    if((fd = open(fdname, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) == -1){
+        perror("Error: not open\n");
+        exit(EXIT_FAILURE);
     }
-    
+
     for(int i=0; i<AJOUT; i++){
         sprintf(data, "%c", 'A'+(i%26));
         offset = rand()%size;
-        
+
         //Write
-        fseek(file, offset, SEEK_SET);
+        lseek(fd, offset, SEEK_SET);
         begin = clock();
-        fputs(data, file);
+        write(fd, data, 1);
         end = clock();
         time_write += (double)(end - begin) / CLOCKS_PER_SEC;
+        write_offset[i] = offset;
 
+    }
+
+    for(int i=0; i<AJOUT; i++){
         //Read
-        fseek(file, offset, SEEK_SET);
+        lseek(fd, write_offset[i], SEEK_SET);
         begin = clock();
-        fgets(chaine, size, file);
+        read(fd, chaine, 1);
         end = clock();
         time_read += (double)(end - begin) / CLOCKS_PER_SEC;
         printf("Lecture : %s\n", chaine);
-
     }
 
     printf("The write times is %f seconds\n", time_write);
     printf("The read times is %f seconds\n", time_read);
 
-    fclose(file);
+    close(fd);
 }
 
 int main(){
 
     srand(time(NULL));
     int size;
-    char filename[255];
-    char* dirName = "./fichiers";
+    char fdname[255];
+    char* dirName = "./ouichefs/fichiers";
 
     mkdir(dirName, 0755);
 
     for(int i=0; i<NB_FIC; i++){
         size = SIZE_MIN + (rand() % SIZE_MAX);
-        sprintf(filename, "./%s/%c.txt", dirName, 'A'+(i%26));
-        create_file(filename, size);
+        sprintf(fdname, "./%s/%c.txt", dirName, 'A'+(i%26));
+        create_fd(fdname, size);
     }
 
     return 0;
