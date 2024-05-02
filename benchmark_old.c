@@ -7,7 +7,7 @@
 #define SIZE_MIN 1024
 #define SIZE_MAX 4096
 #define NB_FIC 5
-#define AJOUT 10
+#define AJOUT 100
 
 void create_file(char* filename, size_t size){
 
@@ -16,9 +16,8 @@ void create_file(char* filename, size_t size){
     clock_t begin;
     clock_t end;
     int offset;
-    char data[size];
-    char chaine[size];
-    chaine[size-1] = '\0';
+    char data[2];
+    char chaine[2];
 
     FILE * file = NULL;
     if((file = fopen(filename, "w+")) == NULL){
@@ -40,7 +39,7 @@ void create_file(char* filename, size_t size){
         //Read
         fseek(file, offset, SEEK_SET);
         begin = clock();
-        fgets(chaine, size, file);
+        fgets(chaine, 2, file);
         end = clock();
         time_read += (double)(end - begin) / CLOCKS_PER_SEC;
         printf("Lecture : %s\n", chaine);
