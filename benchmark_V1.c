@@ -18,8 +18,10 @@ void create_fd(char* fdname, size_t size){
     clock_t begin;
     clock_t end;
     int offset;
-    char data[size];
-    char chaine[1];
+    char data[2];
+    char chaine[2];
+    chaine[2] = '\0';
+    data[2] = '\0';
     int fd;
     
     if((fd = open(fdname, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) == -1){
