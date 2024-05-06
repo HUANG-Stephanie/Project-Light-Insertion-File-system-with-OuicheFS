@@ -250,9 +250,13 @@ ssize_t read(struct file* file, char __user* user_buf, size_t size, loff_t* ppos
                 *ppos += bh_size;
         }
         
+        pr_info("SIZE = %lu\n", bh_size);
+	pr_info("OFFSET = %lld\n", *ppos);
+	pr_info("DONNEE = %s\n", bh->b_data);
+	
         // Libératon du bloc
         brelse(bh);
-
+	
         return bh_size;
 }
 
@@ -289,6 +293,10 @@ ssize_t write(struct file* file, const char __user* user_buf, size_t size, loff_
                         copy_bytes = -1;
                 }
 
+		pr_info("SIZE = %lu\n", copy_bytes);
+		pr_info("OFFSET = %lld\n", *ppos);
+		pr_info("DONNEE = %s\n", bh->b_data);		
+		
                 // Marquer dirty et forcer l'écriture sur disque
                 mark_buffer_dirty(bh);
                 sync_dirty_buffer(bh);
@@ -305,6 +313,7 @@ ssize_t write(struct file* file, const char __user* user_buf, size_t size, loff_
                 offset = 0;
 
                 inode->i_size +=copy_bytes;
+                
         }
         return copy_bytes;
 }
