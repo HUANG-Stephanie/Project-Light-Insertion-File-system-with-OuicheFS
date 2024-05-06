@@ -4,7 +4,7 @@
 
 #define SIZE_MAX 4096
 
-void ioctl(struct file* file){
+long ouichefs_ioctl(struct file* file, unsigned int cmd, unsigned long arg){
         int nb_used_blocks = 0;
         int nb_partially_blocks = 0;
         int nb_bytes_wasted = 0;
@@ -27,13 +27,16 @@ void ioctl(struct file* file){
                         break;
                 }
 
-                uint32_t size_used = file_block->blocks[i] & ~(pow(2,20) - 1);
-                uint32_t nb_block = file_block->blocks[i] & (pow(2,20) - 1);
+                // Décale les 12 bits de poids fort à droite
+                uint32_t size_used = file_block->blocks[i] >> 20;
+                // Masque qui conserve uniquement les 20 bits de poids faible
+                uint32_t nb_block = file_block->blocks[i] & 0xFFFFF;
                 
                 nb_bytes_wasted += delayed_bytes_wasted;
                 nb_used_blocks++;
                 if(size_used != SIZE_MAX){
                         nb_partially_blocks++;
+                        delayed_bytes_wasted += (SIZE_MAX - size_used);
                 }
                 else{
                         delayed_bytes_wasted = 0;
@@ -51,12 +54,19 @@ void ioctl(struct file* file){
                         break;
                 }
 
-                uint32_t size_used = file_block->blocks[i] & ~(pow(2,20) - 1);
-                uint32_t nb_block = file_block->blocks[i] & (pow(2,20) - 1);
+                // Décale les 12 bits de poids fort à droite
+                uint32_t size_used = file_block->blocks[i] >> 20;
+                // Masque qui conserve uniquement les 20 bits de poids faible
+                uint32_t nb_block = file_block->blocks[i] & 0xFFFFF;
 
                 pr_info("Numero de bloc = %d\nTaille du bloc effectif = %d\n", nb_block, size_used);
         }
 
         brelse(bh);
 
+        return 0;
 }
+
+static const struct file_operations ouichefs_fops = {
+    .unlocked_ioctl = ouichefs_ioctl,
+};
