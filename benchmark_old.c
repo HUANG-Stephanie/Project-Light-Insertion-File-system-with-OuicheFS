@@ -7,7 +7,7 @@
 #define SIZE_MIN 1024
 #define SIZE_MAX 4096
 #define NB_FIC 5
-#define AJOUT 100
+#define AJOUT 10
 
 void create_file(char* filename, size_t size){
 

@@ -222,9 +222,10 @@ static int ouichefs_open(struct inode *inode, struct file *file) {
 	return 0;
 }
 
-ssize_t read(struct file* file, char __user* user_buf, size_t size, loff_t* ppos){
+ssize_t ouichefs_read(struct file* file, char __user* user_buf, size_t size, loff_t* ppos){
         pr_info("OUICHEFS READ\n");
-
+	pr_info("OFFSET = %lld\n", *ppos);
+	
         struct buffer_head * bh;
         struct inode* inode = file->f_inode; 
         struct super_block *sb = inode->i_sb;
@@ -232,14 +233,20 @@ ssize_t read(struct file* file, char __user* user_buf, size_t size, loff_t* ppos
         // Numéro de bloc correspondant à l'offset
         sector_t nb_block = *ppos >> sb->s_blocksize_bits;
         
+        pr_info("Num block = %llu\n", nb_block);
+        
         // Lecture du bloc
         bh = sb_bread(sb, nb_block);
         if (!bh){
 		return -EIO;
         }
 
+	pr_info("DONNEE BLOC = %s\n", bh->b_data);
+
         // Calcul longueur max qu'on peut lire dans le bloc
         size_t bh_size = min(size, (size_t)(sb->s_blocksize - (*ppos % sb->s_blocksize)));
+        
+        pr_info("SIZE = %lu\n", bh_size);
         
         // Copie vers l'utilisateur
         if(copy_to_user(user_buf, bh->b_data, bh_size)){
@@ -250,9 +257,7 @@ ssize_t read(struct file* file, char __user* user_buf, size_t size, loff_t* ppos
                 *ppos += bh_size;
         }
         
-        pr_info("SIZE = %lu\n", bh_size);
-	pr_info("OFFSET = %lld\n", *ppos);
-	pr_info("DONNEE = %s\n", bh->b_data);
+        pr_info("DONNEE USER = %s\n", user_buf);
 	
         // Libératon du bloc
         brelse(bh);
@@ -260,8 +265,9 @@ ssize_t read(struct file* file, char __user* user_buf, size_t size, loff_t* ppos
         return bh_size;
 }
 
-ssize_t write(struct file* file, const char __user* user_buf, size_t size, loff_t* ppos){
+ssize_t ouichefs_write(struct file* file, const char __user* user_buf, size_t size, loff_t* ppos){
         pr_info("OUICHEFS WRITE\n");
+        pr_info("OFFSET = %lld\n", *ppos);
         
         char* data;
         size_t copy_bytes = 0;
@@ -277,7 +283,9 @@ ssize_t write(struct file* file, const char __user* user_buf, size_t size, loff_
         
         // Ecriture dans plusieurs blocs
         while(copy_bytes < size){
-
+		
+		pr_info("SIZE = %lu\n", copy_bytes);
+		
                 // Calcul len à ecrire dans le bloc
                 size_t len = min(sb->s_blocksize - offset, size - copy_bytes);
 
@@ -285,6 +293,8 @@ ssize_t write(struct file* file, const char __user* user_buf, size_t size, loff_
                 if (!bh){
 		        return -EIO;
                 }
+                
+                pr_info("DONNEE BLOC = %s\n", bh->b_data);		
 
                 // Ecriture à la fin des données precédentes
                 data = bh->b_data + offset;
@@ -292,10 +302,8 @@ ssize_t write(struct file* file, const char __user* user_buf, size_t size, loff_
                         brelse(bh);
                         copy_bytes = -1;
                 }
-
-		pr_info("SIZE = %lu\n", copy_bytes);
-		pr_info("OFFSET = %lld\n", *ppos);
-		pr_info("DONNEE = %s\n", bh->b_data);		
+                
+                pr_info("DONNEE USER = %s\n", user_buf);
 		
                 // Marquer dirty et forcer l'écriture sur disque
                 mark_buffer_dirty(bh);
@@ -321,9 +329,9 @@ ssize_t write(struct file* file, const char __user* user_buf, size_t size, loff_
 const struct file_operations ouichefs_file_ops = {
 	.owner = THIS_MODULE,
 	.open = ouichefs_open,
-	.llseek = generic_file_llseek,
+	//.llseek = generic_file_llseek,
 	.read_iter = generic_file_read_iter,
 	.write_iter = generic_file_write_iter, 
-	.read = read,
-	.write = write,
+	.read = ouichefs_read,
+	.write = ouichefs_write,
 };
