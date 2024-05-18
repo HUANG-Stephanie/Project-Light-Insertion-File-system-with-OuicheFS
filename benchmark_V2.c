@@ -20,9 +20,7 @@ void create_fd(char* fdname, size_t size){
     int offset;
     char data[2];
     char chaine[2];
-    chaine[2] = '\0';
-    data[2] = '\0';
-    int write_offset[AJOUT];
+    int offsets[AJOUT];
 
     int fd;
     if((fd = open(fdname, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) == -1){
@@ -31,24 +29,23 @@ void create_fd(char* fdname, size_t size){
     }
 
     for(int i=0; i<AJOUT; i++){
-        sprintf(data, "%c", 'A'+(i%26));
+        sprintf(data, "%c\0", 'A'+(i%26));
         offset = rand()%size;
 
         //Write
         lseek(fd, offset, SEEK_SET);
         begin = clock();
-        write(fd, data, 1);
+        write(fd, data, 2);
         end = clock();
         time_write += (double)(end - begin) / CLOCKS_PER_SEC;
-        write_offset[i] = offset;
-
+        offsets[i] = offset;
     }
 
     for(int i=0; i<AJOUT; i++){
         //Read
-        lseek(fd, write_offset[i], SEEK_SET);
+        lseek(fd, offsets[i], SEEK_SET);
         begin = clock();
-        read(fd, chaine, 1);
+        read(fd, chaine, 2);
         end = clock();
         time_read += (double)(end - begin) / CLOCKS_PER_SEC;
         printf("Lecture : %s\n", chaine);

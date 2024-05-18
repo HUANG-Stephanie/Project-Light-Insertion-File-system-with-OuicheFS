@@ -224,7 +224,6 @@ static int ouichefs_open(struct inode *inode, struct file *file) {
 
 ssize_t ouichefs_read(struct file* file, char __user* user_buf, size_t size, loff_t* ppos){
         pr_info("OUICHEFS READ\n");
-	pr_info("OFFSET = %lld\n", *ppos);
 	
         struct buffer_head * bh;
         struct inode* inode = file->f_inode; 
@@ -233,42 +232,31 @@ ssize_t ouichefs_read(struct file* file, char __user* user_buf, size_t size, lof
         // Numéro de bloc correspondant à l'offset
         sector_t nb_block = *ppos >> sb->s_blocksize_bits;
         
-        pr_info("Num block = %llu\n", nb_block);
-        
         // Lecture du bloc
         bh = sb_bread(sb, nb_block);
         if (!bh){
 		return -EIO;
         }
 
-	pr_info("DONNEE BLOC = %s\n", bh->b_data);
-
         // Calcul longueur max qu'on peut lire dans le bloc
         size_t bh_size = min(size, (size_t)(sb->s_blocksize - (*ppos % sb->s_blocksize)));
         
-        pr_info("SIZE = %lu\n", bh_size);
-        
         // Copie vers l'utilisateur
-        if(copy_to_user(user_buf, bh->b_data, bh_size)){
-                bh_size = -1;
-        }
-        else{
-                // Mis à jour de l'offset
-                *ppos += bh_size;
+        if(copy_to_user(user_buf, bh->b_data + (*ppos % sb->s_blocksize), bh_size)){
+                brelse(bh);
+                return -EFAULT;
         }
         
-        pr_info("DONNEE USER = %s\n", user_buf);
-	
+        // Mis à jour de la position dans le fichier
+        file->f_pos += bh_size;
         // Libératon du bloc
         brelse(bh);
-	
         return bh_size;
 }
 
 ssize_t ouichefs_write(struct file* file, const char __user* user_buf, size_t size, loff_t* ppos){
         pr_info("OUICHEFS WRITE\n");
-        pr_info("OFFSET = %lld\n", *ppos);
-        
+                
         char* data;
         size_t copy_bytes = 0;
         struct buffer_head * bh;
@@ -281,29 +269,25 @@ ssize_t ouichefs_write(struct file* file, const char __user* user_buf, size_t si
         // Position de l'offset dans le bloc 
         unsigned offset = *ppos % sb->s_blocksize;
         
-        // Ecriture dans plusieurs blocs
+        /* Ecriture dans plusieurs blocs 
+        (seulement si le nombre d'octets à écrire dépasse la taille de la page */
         while(copy_bytes < size){
 		
-		pr_info("SIZE = %lu\n", copy_bytes);
-		
-                // Calcul len à ecrire dans le bloc
+                // Calcul len max à ecrire dans le bloc
                 size_t len = min(sb->s_blocksize - offset, size - copy_bytes);
 
                 bh = sb_bread(sb, nb_block);
                 if (!bh){
 		        return -EIO;
                 }
-                
-                pr_info("DONNEE BLOC = %s\n", bh->b_data);		
 
                 // Ecriture à la fin des données precédentes
                 data = bh->b_data + offset;
-                if(copy_from_user(data, user_buf, len)){
-                        brelse(bh);
-                        copy_bytes = -1;
-                }
                 
-                pr_info("DONNEE USER = %s\n", user_buf);
+                if(copy_from_user(data, user_buf + copy_bytes, len)){
+                        brelse(bh);
+                        return -EFAULT;
+                }
 		
                 // Marquer dirty et forcer l'écriture sur disque
                 mark_buffer_dirty(bh);
@@ -312,24 +296,26 @@ ssize_t ouichefs_write(struct file* file, const char __user* user_buf, size_t si
                 
                 /* Incrémenter la longueur de donnée ecrite
                 Incrémenter l'offset initial
-                Passer au bloc suivant car fin du bloc courant
+                Condition pour passer au bloc suivant car fin du bloc courant
                 offset à 0 car nouveau bloc 
                 */
                 copy_bytes += len;
-                *ppos += copy_bytes;
-                nb_block++;
-                offset = 0;
-
-                inode->i_size +=copy_bytes;
+                if(offset + len >= sb->s_blocksize){
+		        nb_block++;
+		        inode->i_blocks++;
+		        offset = 0;
+               	}
                 
         }
+        inode->i_size += copy_bytes;
+        file->f_pos += copy_bytes;
         return copy_bytes;
 }
 
 const struct file_operations ouichefs_file_ops = {
 	.owner = THIS_MODULE,
 	.open = ouichefs_open,
-	//.llseek = generic_file_llseek,
+	.llseek = generic_file_llseek,
 	.read_iter = generic_file_read_iter,
 	.write_iter = generic_file_write_iter, 
 	.read = ouichefs_read,

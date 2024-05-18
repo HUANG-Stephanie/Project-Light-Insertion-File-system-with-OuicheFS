@@ -9,7 +9,7 @@
 #define SIZE_MIN 1024
 #define SIZE_MAX 4096
 #define NB_FIC 5
-#define AJOUT 10
+#define AJOUT 100
 
 void create_fd(char* fdname, size_t size){
 
@@ -28,12 +28,11 @@ void create_fd(char* fdname, size_t size){
     }
 
     for(int i=0; i<AJOUT; i++){
-        sprintf(data, "%c", 'A'+(i%26));
+        sprintf(data, "%c\0", 'A'+(i%26));
         offset = rand()%size;
-        
+
         //Write
         lseek(fd, offset, SEEK_SET);
-        printf("OFFSET WRITE = %d\n", offset);
         begin = clock();
         write(fd, data, 2);
         end = clock();
@@ -41,7 +40,6 @@ void create_fd(char* fdname, size_t size){
 
         //Read
         lseek(fd, offset, SEEK_SET);
-        printf("OFFSET READ = %d\n", offset);
         begin = clock();
         read(fd, chaine, 2);
         end = clock();
