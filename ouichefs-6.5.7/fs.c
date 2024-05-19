@@ -10,11 +10,14 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/fs.h>
+#include <linux/buffer_head.h>
+#include <linux/file.h>
 
 #include "ouichefs.h"
 
-#define SIZE_MAX 4096
-#define NAME ouichefs_ioctl
+#define MAX 4096
+#define IOCTL_NAME "ouichefs_ioctl"
+#define CMD _IOWR('N', 0 , char* )
 
 /*
  * Mount a ouiche_fs partition
@@ -54,12 +57,18 @@ static struct file_system_type ouichefs_file_system_type = {
 };
 
 long ouichefs_ioctl(struct file* file, unsigned int cmd, unsigned long arg){
+	pr_info("OUICHEFS IOCTL\n");
+	
+	(void)cmd;
+	int fd = (int)arg;
+	struct file *data = fget(fd);
+	
         int nb_used_blocks = 0;
         int nb_partially_blocks = 0;
         int nb_bytes_wasted = 0;
         int delayed_bytes_wasted = 0;
 
-        struct inode *inode = file_inode(file);
+        struct inode *inode = file_inode(data);
         struct super_block *sb = inode->i_sb;
         struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
         struct buffer_head *bh = NULL;
@@ -79,13 +88,13 @@ long ouichefs_ioctl(struct file* file, unsigned int cmd, unsigned long arg){
                 // Décale les 12 bits de poids fort à droite
                 uint32_t size_used = file_block->blocks[i] >> 20;
                 // Masque qui conserve uniquement les 20 bits de poids faible
-                uint32_t nb_block = file_block->blocks[i] & 0xFFFFF;
+                //uint32_t nb_block = file_block->blocks[i] & 0xFFFFF;
                 
                 nb_bytes_wasted += delayed_bytes_wasted;
                 nb_used_blocks++;
-                if(size_used != SIZE_MAX){
+                if(size_used != MAX){
                         nb_partially_blocks++;
-                        delayed_bytes_wasted += (SIZE_MAX - size_used);
+                        delayed_bytes_wasted += (MAX - size_used);
                 }
                 else{
                         delayed_bytes_wasted = 0;
@@ -112,12 +121,12 @@ long ouichefs_ioctl(struct file* file, unsigned int cmd, unsigned long arg){
         }
 
         brelse(bh);
-
-        return 0;
+        fput(data);
+	return 0;
 }
 
-const struct file_operations ioctl_ops = {
-	.unlocked_ioctl = ouichefs_ioctl
+static struct file_operations ioctl_ops = {
+	.unlocked_ioctl = ouichefs_ioctl,
 };
 
 static int major;
@@ -137,7 +146,11 @@ static int __init ouichefs_init(void)
 		goto err_inode;
 	}
 	
-	major = register_chrdev(0, NAME, &ioctl_ops);
+	major = register_chrdev(0, IOCTL_NAME, &ioctl_ops);
+	if (major < 0) {
+	    pr_err("Failed to register device\n");
+	    return major;
+	}
 	pr_info("Numero du major : %d\n", major);
 	
 	pr_info("module loaded\n");
@@ -159,7 +172,7 @@ static void __exit ouichefs_exit(void)
 
 	ouichefs_destroy_inode_cache();
 	
-	unregister_chrdev(major, NAME);
+	unregister_chrdev(major, IOCTL_NAME);
 
 	pr_info("module unloaded\n");
 }
