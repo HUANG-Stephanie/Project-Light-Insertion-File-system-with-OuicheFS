@@ -80,16 +80,14 @@ long ouichefs_ioctl(struct file* file, unsigned int cmd, unsigned long arg){
         file_block = (struct ouichefs_file_index_block *)bh->b_data;
         for(int i = 0; i < inode->i_blocks - 1; i++){
                 
-                if(!file_block->blocks[i]){
+                if(file_block->blocks[i] == 0){
                         pr_info("Termine\n");
                         break;
                 }
 
-                // Décale les 12 bits de poids fort à droite
+        	// Nombre de données réel dans le bloc
                 uint32_t size_used = file_block->blocks[i] >> 20;
-                // Masque qui conserve uniquement les 20 bits de poids faible
-                //uint32_t nb_block = file_block->blocks[i] & 0xFFFFF;
-                
+          
                 nb_bytes_wasted += delayed_bytes_wasted;
                 nb_used_blocks++;
                 if(size_used != MAX){
@@ -112,9 +110,9 @@ long ouichefs_ioctl(struct file* file, unsigned int cmd, unsigned long arg){
                         break;
                 }
 
-                // Décale les 12 bits de poids fort à droite
+        	// Nombre de données réel dans le bloc
                 uint32_t size_used = file_block->blocks[i] >> 20;
-                // Masque qui conserve uniquement les 20 bits de poids faible
+        	// Numero du bloc réel
                 uint32_t nb_block = file_block->blocks[i] & 0xFFFFF;
 
                 pr_info("Numero de bloc = %d\nTaille du bloc effectif = %d\n", nb_block, size_used);
