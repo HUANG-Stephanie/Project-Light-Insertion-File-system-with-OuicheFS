@@ -1,6 +1,6 @@
 #! /bin/bash
 
-cd /tmp/PNL/ouichefs/mfs
+cd /tmp/PNL/ouichefs/mfks
 
 gcc -Wall -o mkfs.ouichefs mkfs-ouichefs.c
 
