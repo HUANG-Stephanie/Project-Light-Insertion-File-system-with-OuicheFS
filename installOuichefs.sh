@@ -8,6 +8,8 @@ cd /tmp/PNL/
 
 git clone https://github.com/rgouicem/ouichefs.git
 
+cd /tmp/PNL/ouichefs/mkfs
+
 gcc -Wall -o mkfs.ouichefs mkfs-ouichefs.c
 
 cd ..
