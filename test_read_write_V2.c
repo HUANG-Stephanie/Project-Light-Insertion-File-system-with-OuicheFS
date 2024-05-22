@@ -13,9 +13,22 @@ int main(){
     }
 
     char data[14] = "Hello test !\0";
-    char buf[14];
+    char buf[23];
+
     write(fd, data, 14);
     read(fd, buf, 14);
+    printf("%s\n", buf);
+    
+    lseek(fd, 0, SEEK_SET);
+    write(fd, "World", 5);
+    lseek(fd, 0, SEEK_SET);
+    read(fd, buf, 19);
+    printf("%s\n", buf);
+
+    lseek(fd, 4090, SEEK_SET);
+    write(fd, "Je suis à l'offset 4090", 23);
+    lseek(fd, 4090, SEEK_SET);
+    read(fd, buf, 23);
     printf("%s\n", buf);
 
     close(fd);
