@@ -72,33 +72,17 @@ long ouichefs_ioctl(struct file* file, unsigned int cmd, unsigned long arg){
         struct inode *inode = file_inode(data);
         struct super_block *sb = inode->i_sb;
         struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
-        struct ouichefs_inode *cinode = NULL;
         struct buffer_head *bh = NULL;
         struct buffer_head *bh2 = NULL;
         struct buffer_head *bh3 = NULL;
         struct ouichefs_file_index_block *file_block = NULL;
-	uint32_t inode_block = (inode->i_ino / OUICHEFS_INODES_PER_BLOCK) + 1;
-        uint32_t inode_shift = inode->i_ino % OUICHEFS_INODES_PER_BLOCK;
         uint32_t size_used, nb_block;
-        	
-        bh = sb_bread(sb, inode_block);
-        if (!bh){
-                return -EIO;
-	}
-	cinode = (struct ouichefs_inode *)(bh->b_data);
-	cinode += inode_shift;
 	
-	pr_info("CI INDEX = %d\n", ci->index_block);	
-	pr_info("CINODE INDEX = %d\n", cinode->index_block);	
-	
-        bh2 = sb_bread(sb, cinode->index_block);
+        bh2 = sb_bread(sb, ci->index_block);
         if (!bh2){
                 return -EIO;
         }
         file_block = (struct ouichefs_file_index_block *)(bh2->b_data);
-   
-        pr_info("NB bloc inode = %llu\n", inode->i_blocks);
-        pr_info("NB bloc cinode = %d\n", cinode->i_blocks);
 	        
         for(int i = 0; i < inode->i_blocks; i++){
                 pr_info("Bloc = %d\n", file_block->blocks[i]);
