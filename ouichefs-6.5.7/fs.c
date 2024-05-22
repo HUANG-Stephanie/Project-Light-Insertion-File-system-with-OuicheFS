@@ -79,6 +79,7 @@ long ouichefs_ioctl(struct file* file, unsigned int cmd, unsigned long arg){
         struct ouichefs_file_index_block *file_block = NULL;
 	uint32_t inode_block = (inode->i_ino / OUICHEFS_INODES_PER_BLOCK) + 1;
         uint32_t inode_shift = inode->i_ino % OUICHEFS_INODES_PER_BLOCK;
+        uint32_t size_used, nb_block;
         	
         bh = sb_bread(sb, inode_block);
         if (!bh){
@@ -107,9 +108,11 @@ long ouichefs_ioctl(struct file* file, unsigned int cmd, unsigned long arg){
                         break;
                 }
 	
+		size_used = file_block->blocks[i];
+        	nb_block = file_block->blocks[i];
         	// Nombre de données réel dans le bloc
-                uint32_t size_used = file_block->blocks[i] >> 20;
-                uint32_t nb_block = file_block->blocks[i] & 0xFFFFF;
+                size_used = size_used >> 20;
+                nb_block = nb_block & 0xFFFFF;
                 
                 pr_info("BLOC REEL = %d\n", nb_block);
                 pr_info("TAILLE USED = %d\n", size_used);
@@ -142,11 +145,13 @@ long ouichefs_ioctl(struct file* file, unsigned int cmd, unsigned long arg){
                         pr_info("Termine\n");
                         break;
                 }
-
+		
+		size_used = file_block->blocks[i];
+        	nb_block = file_block->blocks[i];
         	// Nombre de données réel dans le bloc
-                uint32_t size_used = file_block->blocks[i] >> 20;
+                size_used = size_used >> 20;
         	// Numero du bloc réel
-                uint32_t nb_block = file_block->blocks[i] & 0xFFFFF;
+                nb_block = nb_block & 0xFFFFF;
 
                 pr_info("Numero de bloc = %d\nTaille du bloc effectif = %d\n", nb_block, size_used);
         }

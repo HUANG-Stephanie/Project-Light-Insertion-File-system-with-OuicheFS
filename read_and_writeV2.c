@@ -8,25 +8,38 @@ ssize_t ouichefs_read(struct file* file, char __user* user_buf, size_t size, lof
         struct buffer_head *bh = NULL;
         struct buffer_head *bh2 = NULL;
         struct ouichefs_file_index_block *file_block = NULL;
+        uint32_t size_used, nb_block;
 
         // Recuperer le tableau des blocs
         bh = sb_bread(sb, ci->index_block);
-        if (!bh)
-                return -EIO;
+        if (!bh){
+                return -1;
+        }
+        
+        pr_info("DATA BH = %s\n", bh->b_data);
+        
         file_block = (struct ouichefs_file_index_block *)bh->b_data;
 
         // Numéro de bloc correspondant à l'offset
         sector_t offset_block = (*ppos >> sb->s_blocksize_bits);
         
         pr_info("NUM BLOC = %llu\n", offset_block);
-
+        
+        pr_info("BLOC DANS FILE_BLOCK = %d\n", file_block->blocks[offset_block]);
+        
         size_t lu = 0;
         while(lu < size && file_block->blocks[offset_block] != 0){
 
+		size_used = file_block->blocks[offset_block];
+        	nb_block = file_block->blocks[offset_block];
                 // Nombre de données réel dans le bloc
-                uint32_t size_used = file_block->blocks[offset_block] >> 20;
+                size_used = size_used >> 20;
                 // Numero du bloc réel
-                uint32_t nb_block = file_block->blocks[offset_block] & 0xFFFFF;
+                nb_block = nb_block & 0xFFFFF;
+                
+                pr_info("TAILLE DES DONNEE = %d\n", size_used);
+                pr_info("BLOC REEL = %d\n", nb_block);
+                
                 // Lecture du bloc
                 bh2 = sb_bread(sb, nb_block);
                 if (!bh2){
@@ -60,7 +73,7 @@ ssize_t ouichefs_read(struct file* file, char __user* user_buf, size_t size, lof
 
         // Libératon du bloc
         brelse(bh);
-	    pr_info("POSITION FIN = %lld\n", file->f_pos);
+	pr_info("POSITION FIN = %lld\n", file->f_pos);
         return lu;
 }
 
@@ -71,28 +84,23 @@ ssize_t ouichefs_write(struct file* file, const char __user* user_buf, size_t si
         struct inode *inode = file_inode(file);
         struct super_block *sb = inode->i_sb;
         struct ouichefs_sb_info *sbi = OUICHEFS_SB(sb);
+        struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
         struct buffer_head *bh = NULL;
         struct buffer_head *bh2 = NULL;
         struct buffer_head *bh3 = NULL;
-        struct buffer_head *bh_cinode = NULL;
-        struct ouichefs_inode *cinode = NULL;
         struct ouichefs_file_index_block *file_block = NULL;
         uint32_t new_block, size_used, nb_block, num_block;
         char *data, *buf;
         size_t written_data = 0, len = 0;
-        uint32_t inode_block = (inode->i_ino / OUICHEFS_INODES_PER_BLOCK) + 1;
-        
-        bh_cinode = sb_bread(sb, inode_block);
-        if (!bh_cinode){
-                return -EIO;
-	}
-	cinode = (struct ouichefs_inode *)(bh_cinode->b_data);
         
         // Recuperer le tableau des blocs
-        bh = sb_bread(sb, cinode->index_block);
+        bh = sb_bread(sb, ci->index_block);
         if (!bh){
-                return -EIO;
+                return -1;
         }
+        
+        pr_info("DATA BH = %s\n", bh->b_data);
+        
         file_block = (struct ouichefs_file_index_block *)bh->b_data;
 
         // Numéro de bloc correspondant à l'offset
@@ -100,17 +108,25 @@ ssize_t ouichefs_write(struct file* file, const char __user* user_buf, size_t si
         
         pr_info("NUM BLOC = %llu\n", offset_block);
 
+	pr_info("BLOC OFFSET_BLOCK DANS FILE_BLOCK = %d\n", file_block->blocks[offset_block]);
+	pr_info("BLOC 0 DANS FILE_BLOCK = %d\n", file_block->blocks[0]);
+
         // Position de l'offset dans le bloc 
         unsigned offset = *ppos % sb->s_blocksize;
 
+        size_used = file_block->blocks[offset_block];
+        nb_block = file_block->blocks[offset_block];
         // Nombre de données réel dans le bloc
-        size_used = file_block->blocks[offset_block] >> 20;
+        size_used = size_used >> 20;
         // Numero du bloc réel
-        nb_block = file_block->blocks[offset_block] & 0xFFFFF;
+        nb_block = nb_block & 0xFFFFF;
+        
+        pr_info("TAILLE DES DONNEE = %d\n", size_used);
+        pr_info("BLOC REEL = %d\n", nb_block);
 
         bh2 = sb_bread(sb, nb_block);
         if (!bh2){
-                return -EIO;
+                return -1;
         }
 
         data = bh2->b_data + offset;
@@ -131,11 +147,11 @@ ssize_t ouichefs_write(struct file* file, const char __user* user_buf, size_t si
                         // Allocation nouveau bloc
                         new_block = get_free_block(sbi);
                         if (!new_block) {
-                                return -ENOSPC;
+                                return -1;
                         }
                         bh3 = sb_bread(sb, new_block);
                         if (!bh3){
-                                return -EIO;
+                                return -1;
                         }
 
                         // Copie des données depuis le user
@@ -143,7 +159,7 @@ ssize_t ouichefs_write(struct file* file, const char __user* user_buf, size_t si
                             brelse(bh);
                             brelse(bh2);
                             brelse(bh3);
-                            return -EFAULT;
+                            return -1;
                         }
                         mark_buffer_dirty(bh3);
                         sync_dirty_buffer(bh3);
@@ -154,14 +170,14 @@ ssize_t ouichefs_write(struct file* file, const char __user* user_buf, size_t si
                         written_data += len;
 
                         // Decalage de tous les blocs
-                        for(int i = cinode->i_blocks; i>offset_block; i--){
+                        for(int i = inode->i_blocks; i>offset_block; i--){
                             file_block->blocks[i] = file_block->blocks[i-1];
                         }
                         offset_block++;
                         file_block->blocks[offset_block] = num_block;
 
                         // Mis a jour de l'inode
-                        cinode->i_blocks++;
+                        inode->i_blocks++;
 
                         offset = min(sb->s_blocksize, size - written_data);
                         brelse(bh3);
@@ -171,7 +187,7 @@ ssize_t ouichefs_write(struct file* file, const char __user* user_buf, size_t si
                         if(copy_from_user(data, user_buf + written_data, len)){
                             brelse(bh);
                             brelse(bh2);
-                            return -EFAULT;
+                            return -1;
                         }
                         mark_buffer_dirty(bh2);
                         sync_dirty_buffer(bh2);
@@ -188,15 +204,17 @@ ssize_t ouichefs_write(struct file* file, const char __user* user_buf, size_t si
 
         // Ajout donnée du buffer
 
+	size_used = file_block->blocks[offset_block];
+        nb_block = file_block->blocks[offset_block];
         // Nombre de données réel dans le bloc
-        size_used = file_block->blocks[offset_block] >> 20;
+        size_used = size_used >> 20;
         // Numero du bloc réel
-        nb_block = file_block->blocks[offset_block] & 0xFFFFF;
+        nb_block = nb_block & 0xFFFFF;
 
         if(sb->s_blocksize - size_used >= size_from_offset){
                 bh3 = sb_bread(sb, nb_block);
                 if (!bh3){
-                        return -EIO;
+                        return -1;
                 }
                 memcpy(bh3->b_data + size_used, buf, size_from_offset);
                 // Calcul du numero de bloc
@@ -207,28 +225,28 @@ ssize_t ouichefs_write(struct file* file, const char __user* user_buf, size_t si
                 // Allocation nouveau bloc
                 new_block = get_free_block(sbi);
                 if (!new_block) {
-                        return -ENOSPC;
+                        return -1;
                 }
                 bh3 = sb_bread(sb, new_block);
                 if (!bh3){
-                        return -EIO;
+                        return -1;
                 }
                 memcpy(bh3->b_data, buf, size_from_offset);
                 // Calcul du numero de bloc
                 num_block = (size_from_offset << 20) | (new_block & 0xFFFFF);
 		
 		// Decalage de tous les blocs
-                for(int i = cinode->i_blocks; i>offset_block; i--){
+                for(int i = inode->i_blocks; i>offset_block; i--){
                     file_block->blocks[i] = file_block->blocks[i-1];
                 }
                 offset_block++;
                 file_block->blocks[offset_block] = num_block;
 
                 // Mis a jour de l'inode
-                cinode->i_blocks++;
+                inode->i_blocks++;
 		
         }
-
+	
         brelse(bh);
         brelse(bh2);
         brelse(bh3);
@@ -236,7 +254,7 @@ ssize_t ouichefs_write(struct file* file, const char __user* user_buf, size_t si
         
         // Mis à jour de la position dans le fichier
         file->f_pos += written_data;
-        cinode->i_size += written_data;
+        inode->i_size += written_data;
         
         return written_data;
 }

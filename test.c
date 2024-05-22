@@ -12,7 +12,7 @@ int main(){
         exit(EXIT_FAILURE);
     }
 
-    char data[14] = "Hello ioctl !\0";
+    char data[14] = "Hello test !\0";
     char buf[14];
     write(fd, data, 14);
     read(fd, buf, 14);
