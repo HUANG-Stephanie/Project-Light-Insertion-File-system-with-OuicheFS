@@ -5,7 +5,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define CMD _IOWR('N', 0 , char* )
+#define TEST_CMD _IOWR('N', 0 , char* )
+#define DEFRAG_CMD _IOWR('N', 1 , char* )
 
 int main(){
 
@@ -32,7 +33,7 @@ int main(){
     read(fd2, buf, 14);
     printf("%s\n", buf);
 
-    int res = ioctl(fd, CMD, fd2);
+    int res = ioctl(fd, TEST_CMD, fd2);
     if(res < 0){
         perror("ioctl failed\n");
         return -1;
@@ -51,9 +52,9 @@ int main(){
     read(fd3, buf2, 19);
     printf("%s\n", buf2);
 
-    lseek(fd3, 4090, SEEK_SET);
+    lseek(fd3, 4096, SEEK_SET);
     write(fd3, "Je suis à l'offset 4090", 23);
-    lseek(fd3, 4090, SEEK_SET);
+    lseek(fd3, 4096, SEEK_SET);
     read(fd3, buf2, 23);
     printf("%s\n", buf2);
 
@@ -66,7 +67,19 @@ int main(){
     read(fd3, buf2, 30);
     printf("%s\n", buf2);
     
-    res = ioctl(fd, CMD, fd3);
+    res = ioctl(fd, TEST_CMD, fd3);
+    if(res < 0){
+        perror("ioctl failed\n");
+        return -1;
+    }
+
+    res = ioctl(fd, DEFRAG_CMD, fd3);
+    if(res < 0){
+        perror("ioctl failed\n");
+        return -1;
+    }
+
+    res = ioctl(fd, TEST_CMD, fd3);
     if(res < 0){
         perror("ioctl failed\n");
         return -1;
