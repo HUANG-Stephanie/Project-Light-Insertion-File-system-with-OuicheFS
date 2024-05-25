@@ -253,8 +253,10 @@ ssize_t ouichefs_read(struct file *file, char __user *user_buf, size_t size,
 	size_t lu = 0;
 
 	while (lu < size && file_block->blocks[offset_block] != 0) {
+	
 		size_used = file_block->blocks[offset_block];
 		nb_block = file_block->blocks[offset_block];
+		
 		// Nombre de données réel dans le bloc
 		size_used = TAILLE_BLOCK(size_used);
 		// Numero du bloc réel
@@ -268,7 +270,8 @@ ssize_t ouichefs_read(struct file *file, char __user *user_buf, size_t size,
 		// Calcul longueur max qu'on peut lire dans le bloc
 		size_t bh_size =
 			min(size - lu, (size_t)(sb->s_blocksize - offset));
-
+		
+		// Copie dans un buffer
 		memcpy(buf + lu, bh2->b_data + offset, bh_size);
 
 		// Mis à jour de la position dans le fichier
@@ -290,7 +293,6 @@ ssize_t ouichefs_read(struct file *file, char __user *user_buf, size_t size,
 		return -1;
 	}
 
-	// Libératon du bloc
 	brelse(bh);
 	kfree(buf);
 
@@ -311,7 +313,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 	struct ouichefs_file_index_block *file_block = NULL;
 	uint32_t new_block, size_used, nb_block, num_block;
 	char *data, *buf;
-	size_t written_data = 0, len = 0, premier = 0;
+	size_t written_data = 0, len = 0, present = 0;
 
 	// Recuperer le tableau des blocs
 	bh = sb_bread(sb, ci->index_block);
@@ -346,7 +348,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 			file_block->blocks[offset_block] = num_block;
 			// Mis a jour de l'inode
 			vfs_inode->i_blocks++;
-			premier = 1;
+			present = 1;
 		}
 	}
 
@@ -367,14 +369,16 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 	data = bh2->b_data + offset;
 	// Buffer qui contient les donnees après l'offset
 	size_t size_from_offset = sb->s_blocksize - offset;
-
 	buf = kmalloc(size_from_offset, GFP_KERNEL);
 	memcpy(buf, data, size_from_offset);
 
+	// Ajout des modifications
+	
 	while (written_data < size) {
 		// Calcul len max à ecrire dans le bloc
 		len = min(sb->s_blocksize - offset, size - written_data);
-
+		
+		// Si bloc plein
 		if (len == 0) {
 			// Allocation nouveau bloc
 			new_block = get_free_block(sbi);
@@ -404,7 +408,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 			num_block =
 				NB_BLOCK_WITH_SIZE(new_block, size_new_block);
 
-			// Decalage de tous les blocs
+			// Decalage de tous les blocs pour ajouter la nouvelle
 			for (int i = vfs_inode->i_blocks; i > offset_block;
 			     i--) {
 				file_block->blocks[i] =
@@ -420,6 +424,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 			written_data += size_new_block;
 			offset = size_new_block;
 		} else {
+			// Si bloc partiel
 			// Copie des données depuis le user
 			if (copy_from_user(data, user_buf + written_data,
 					   len)) {
@@ -434,7 +439,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 			int size_used_to_offset = offset - size_used;
 			int size_current_block =
 				((size_used + len) >= OUICHEFS_BLOCK_SIZE) &&
-						!premier ?
+						!present ?
 					OUICHEFS_BLOCK_SIZE :
 					(size_used + len);
 			if (size_used_to_offset > 0)
@@ -448,7 +453,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 			written_data += len;
 			offset += len;
 		}
-		premier = 0;
+		present = 0;
 	}
 
 	// Ajout donnée du buffer
@@ -459,7 +464,8 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 	size_used = TAILLE_BLOCK(size_used);
 	// Numero du bloc réel
 	nb_block = NB_BLOCK(nb_block);
-
+	
+	// Si reste de la place dans le bloc courant
 	if (sb->s_blocksize - size_used >= strlen(buf)) {
 		bh3 = sb_bread(sb, nb_block);
 		if (!bh3)
@@ -487,7 +493,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 		// Calcul du numero de bloc
 		num_block = NB_BLOCK_WITH_SIZE(new_block, strlen(buf));
 
-		// Decalage de tous les blocs
+		// Decalage de tous les blocs pour ajouter la nouvelle
 		for (int i = vfs_inode->i_blocks; i > offset_block; i--)
 			file_block->blocks[i] = file_block->blocks[i - 1];
 
@@ -505,6 +511,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 	// Mis à jour de la position dans le fichier
 	file->f_pos += written_data;
 	vfs_inode->i_size += written_data;
+	mark_inode_dirty(vfs_inode);
 
 	return written_data;
 }
