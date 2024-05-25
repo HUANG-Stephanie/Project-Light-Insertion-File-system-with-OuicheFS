@@ -22,7 +22,8 @@ int main(void)
 		return -1;
 	}
 
-	fd2 = open("./ouichefs/ioctl_test.txt", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+	fd2 = open("./ouichefs/ioctl_test.txt", O_RDWR | O_CREAT,
+		   S_IRUSR | S_IWUSR);
 
 	if (fd2 == -1) {
 		perror("Error: not open\n");
@@ -85,12 +86,11 @@ int main(void)
 
 	memset(buf2, 0, SIZE);
 
-	lseek(fd3, 4096*3, SEEK_SET);
-    write(fd3, "Nouveau bloc", 12);
-    lseek(fd3, 4096*3, SEEK_SET);
-    read(fd3, buf2, 12);
-    printf("%s\n", buf2);
-
+	lseek(fd3, 4096 * 3, SEEK_SET);
+	write(fd3, "Nouveau bloc", 12);
+	lseek(fd3, 4096 * 3, SEEK_SET);
+	read(fd3, buf2, 12);
+	printf("%s\n", buf2);
 
 	res = ioctl(fd, TEST_CMD, fd3);
 	if (res < 0) {
