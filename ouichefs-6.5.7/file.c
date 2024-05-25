@@ -253,10 +253,9 @@ ssize_t ouichefs_read(struct file *file, char __user *user_buf, size_t size,
 	size_t lu = 0;
 
 	while (lu < size && file_block->blocks[offset_block] != 0) {
-	
 		size_used = file_block->blocks[offset_block];
 		nb_block = file_block->blocks[offset_block];
-		
+
 		// Nombre de données réel dans le bloc
 		size_used = TAILLE_BLOCK(size_used);
 		// Numero du bloc réel
@@ -270,7 +269,7 @@ ssize_t ouichefs_read(struct file *file, char __user *user_buf, size_t size,
 		// Calcul longueur max qu'on peut lire dans le bloc
 		size_t bh_size =
 			min(size - lu, (size_t)(sb->s_blocksize - offset));
-		
+
 		// Copie dans un buffer
 		memcpy(buf + lu, bh2->b_data + offset, bh_size);
 
@@ -369,15 +368,16 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 	data = bh2->b_data + offset;
 	// Buffer qui contient les donnees après l'offset
 	size_t size_from_offset = sb->s_blocksize - offset;
+
 	buf = kmalloc(size_from_offset, GFP_KERNEL);
 	memcpy(buf, data, size_from_offset);
 
 	// Ajout des modifications
-	
+
 	while (written_data < size) {
 		// Calcul len max à ecrire dans le bloc
 		len = min(sb->s_blocksize - offset, size - written_data);
-		
+
 		// Si bloc plein
 		if (len == 0) {
 			// Allocation nouveau bloc
@@ -464,7 +464,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 	size_used = TAILLE_BLOCK(size_used);
 	// Numero du bloc réel
 	nb_block = NB_BLOCK(nb_block);
-	
+
 	// Si reste de la place dans le bloc courant
 	if (sb->s_blocksize - size_used >= strlen(buf)) {
 		bh3 = sb_bread(sb, nb_block);
