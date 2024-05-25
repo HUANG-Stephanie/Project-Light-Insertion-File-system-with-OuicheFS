@@ -181,9 +181,10 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 
 			// Decalage de tous les blocs
 			for (int i = vfs_inode->i_blocks; i > offset_block;
-			     i--)
+			     i--) {
 				file_block->blocks[i] =
 					file_block->blocks[i - 1];
+			}
 
 			offset_block++;
 			file_block->blocks[offset_block] = num_block;
