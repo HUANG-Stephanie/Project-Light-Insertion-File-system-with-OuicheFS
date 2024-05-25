@@ -9,6 +9,8 @@
 #define TEST_CMD _IOWR('N', 0, char *)
 #define DEFRAG_CMD _IOWR('N', 1, char *)
 
+#define SIZE 4096
+
 int main(void)
 {
 	int fd, fd2, fd3;
@@ -49,17 +51,21 @@ int main(void)
 	}
 
 	char data2[14] = "Hello test !\0";
-	char buf2[5000];
+	char buf2[SIZE];
 
 	write(fd3, data2, 14);
 	read(fd3, buf2, 14);
 	printf("%s\n", buf2);
+
+	memset(buf2, 0, SIZE);
 
 	lseek(fd3, 0, SEEK_SET);
 	write(fd3, "World", 5);
 	lseek(fd3, 0, SEEK_SET);
 	read(fd3, buf2, 19);
 	printf("%s\n", buf2);
+
+	memset(buf2, 0, SIZE);
 
 	lseek(fd3, 4096, SEEK_SET);
 	write(fd3, "Je suis à l'offset 4090", 23);
@@ -76,6 +82,15 @@ int main(void)
 	lseek(fd3, 4090, SEEK_SET);
 	read(fd3, buf2, 30);
 	printf("%s\n", buf2);
+
+	memset(buf2, 0, SIZE);
+
+	lseek(fd3, 4096*3, SEEK_SET);
+    write(fd3, "Nouveau bloc", 12);
+    lseek(fd3, 4096*3, SEEK_SET);
+    read(fd3, buf2, 12);
+    printf("%s\n", buf2);
+
 
 	res = ioctl(fd, TEST_CMD, fd3);
 	if (res < 0) {

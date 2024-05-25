@@ -128,8 +128,8 @@ long ouichefs_ioctl(struct file* file, unsigned int cmd, unsigned long arg){
 				bh_arriere = sb_bread(sb, nb_block_arriere);
 				bh_avant = sb_bread(sb, nb_block_avant);
 
-				dispo_arriere = OUICHEFS_BLOCK_SIZE - used_size_arriere; 
-				
+				dispo_arriere = OUICHEFS_BLOCK_SIZE - used_size_arriere; 		
+							
 				// cas où le block arrière peut accueillir toutes les données du block avant
 				if(dispo_arriere >= used_size_avant){
 						
@@ -140,15 +140,14 @@ long ouichefs_ioctl(struct file* file, unsigned int cmd, unsigned long arg){
 					file_block->blocks[i_avant] = 0;
 					
 					// Calcul du numero de bloc
-                			num_block = NB_BLOCK_WITH_SIZE(nb_block_arriere, (used_size_arriere + used_size_avant)); 
+                	num_block = NB_BLOCK_WITH_SIZE(nb_block_arriere, (used_size_arriere + used_size_avant)); 
 					file_block->blocks[i_arriere] = num_block;
 					
 					// Decalage de tous les blocs
-					for(int i = vfs_inode->i_blocks; i > i_avant; i--){
-						file_block->blocks[i-1] = file_block->blocks[i];
-						
+					for(int i = i_avant; i < vfs_inode->i_blocks; i++){
+						file_block->blocks[i] = file_block->blocks[i+1];
 					}
-
+					
 				// cas où le block arrière ne peut pas accueillir toutes les données du block avant
 				}else{
 					
