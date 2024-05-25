@@ -11,9 +11,8 @@ ssize_t ouichefs_read(struct file *file, char __user *user_buf, size_t size,
 
 	// Recuperer le tableau des blocs
 	bh = sb_bread(sb, ci->index_block);
-	if (!bh) {
+	if (!bh)
 		return -1;
-	}
 
 	file_block = (struct ouichefs_file_index_block *)bh->b_data;
 
@@ -21,11 +20,13 @@ ssize_t ouichefs_read(struct file *file, char __user *user_buf, size_t size,
 	sector_t offset_block = (*ppos >> sb->s_blocksize_bits);
 
 	// Position de l'offset dans le bloc
-	unsigned offset = *ppos % sb->s_blocksize;
+	unsigned int offset = *ppos % sb->s_blocksize;
 
 	char *buf = kmalloc(size, GFP_KERNEL);
+
 	memset(buf, 0, size);
 	size_t lu = 0;
+
 	while (lu < size && file_block->blocks[offset_block] != 0) {
 		size_used = file_block->blocks[offset_block];
 		nb_block = file_block->blocks[offset_block];
@@ -36,9 +37,8 @@ ssize_t ouichefs_read(struct file *file, char __user *user_buf, size_t size,
 
 		// Lecture du bloc
 		bh2 = sb_bread(sb, nb_block);
-		if (!bh2) {
+		if (!bh2)
 			return -1;
-		}
 
 		// Calcul longueur max qu'on peut lire dans le bloc
 		size_t bh_size =
@@ -90,9 +90,8 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 
 	// Recuperer le tableau des blocs
 	bh = sb_bread(sb, ci->index_block);
-	if (!bh) {
+	if (!bh)
 		return -1;
-	}
 
 	file_block = (struct ouichefs_file_index_block *)bh->b_data;
 
@@ -105,13 +104,11 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 		if (file_block->blocks[offset_block] == 0) {
 			// Allocation nouveau bloc
 			new_block = get_free_block(sbi);
-			if (!new_block) {
+			if (!new_block)
 				return -1;
-			}
 			bh3 = sb_bread(sb, new_block);
-			if (!bh3) {
+			if (!bh3)
 				return -1;
-			}
 			memset(bh3->b_data, 0, sb->s_blocksize);
 			mark_buffer_dirty(bh3);
 			sync_dirty_buffer(bh3);
@@ -129,7 +126,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 	}
 
 	// Position de l'offset dans le bloc
-	unsigned offset = *ppos % sb->s_blocksize;
+	unsigned int offset = *ppos % sb->s_blocksize;
 
 	size_used = file_block->blocks[offset_block];
 	nb_block = file_block->blocks[offset_block];
@@ -139,13 +136,13 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 	nb_block = NB_BLOCK(nb_block);
 
 	bh2 = sb_bread(sb, nb_block);
-	if (!bh2) {
+	if (!bh2)
 		return -1;
-	}
 
 	data = bh2->b_data + offset;
 	// Buffer qui contient les donnees après l'offset
 	size_t size_from_offset = sb->s_blocksize - offset;
+
 	buf = kmalloc(size_from_offset, GFP_KERNEL);
 	memcpy(buf, data, size_from_offset);
 
@@ -156,13 +153,11 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 		if (len == 0) {
 			// Allocation nouveau bloc
 			new_block = get_free_block(sbi);
-			if (!new_block) {
+			if (!new_block)
 				return -1;
-			}
 			bh3 = sb_bread(sb, new_block);
-			if (!bh3) {
+			if (!bh3)
 				return -1;
-			}
 			memset(bh3->b_data, 0, sb->s_blocksize);
 
 			int size_new_block =
@@ -186,10 +181,9 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 
 			// Decalage de tous les blocs
 			for (int i = vfs_inode->i_blocks; i > offset_block;
-			     i--) {
+			     i--)
 				file_block->blocks[i] =
 					file_block->blocks[i - 1];
-			}
 
 			offset_block++;
 			file_block->blocks[offset_block] = num_block;
@@ -217,9 +211,8 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 						!premier ?
 					OUICHEFS_BLOCK_SIZE :
 					(size_used + len);
-			if (size_used_to_offset > 0) {
+			if (size_used_to_offset > 0)
 				size_current_block += size_used_to_offset;
-			}
 
 			// Calcul du numero de bloc
 			num_block = NB_BLOCK_WITH_SIZE(nb_block,
@@ -243,9 +236,8 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 
 	if (sb->s_blocksize - size_used >= strlen(buf)) {
 		bh3 = sb_bread(sb, nb_block);
-		if (!bh3) {
+		if (!bh3)
 			return -1;
-		}
 		memcpy(bh3->b_data + (*ppos % sb->s_blocksize) + len, buf,
 		       (size_t)strlen(buf));
 		mark_buffer_dirty(bh3);
@@ -255,13 +247,11 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 	} else {
 		// Allocation nouveau bloc
 		new_block = get_free_block(sbi);
-		if (!new_block) {
+		if (!new_block)
 			return -1;
-		}
 		bh3 = sb_bread(sb, new_block);
-		if (!bh3) {
+		if (!bh3)
 			return -1;
-		}
 		memset(bh3->b_data, 0, sb->s_blocksize);
 		memcpy(bh3->b_data, buf, (size_t)strlen(buf));
 		mark_buffer_dirty(bh3);
@@ -272,9 +262,8 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 		num_block = NB_BLOCK_WITH_SIZE(new_block, strlen(buf));
 
 		// Decalage de tous les blocs
-		for (int i = vfs_inode->i_blocks; i > offset_block; i--) {
+		for (int i = vfs_inode->i_blocks; i > offset_block; i--)
 			file_block->blocks[i] = file_block->blocks[i - 1];
-		}
 
 		offset_block++;
 		file_block->blocks[offset_block] = num_block;
