@@ -18,9 +18,9 @@
 #define OUICHEFS_FILENAME_LEN 28
 #define OUICHEFS_MAX_SUBFILES 128
 
-#define TAILLE_BLOCK(nb) ((nb) >> 20 != 0 ? (nb) >> 20 : OUICHEFS_BLOCK_SIZE) 
-#define NB_BLOCK(nb) ((nb) & 0xFFFFF)
-#define NB_BLOCK_WITH_SIZE(nb,size) (((size) << 20) | ((nb) & 0xFFFFF))
+#define TAILLE_BLOCK(nb) ((nb) >> 20 != 0 ? (nb) >> 20 : OUICHEFS_BLOCK_SIZE)
+#define NB_BLOCK(nb) ((nb)&0xFFFFF)
+#define NB_BLOCK_WITH_SIZE(nb, size) (((size) << 20) | ((nb)&0xFFFFF))
 
 /*
  * ouiche_fs partition layout
