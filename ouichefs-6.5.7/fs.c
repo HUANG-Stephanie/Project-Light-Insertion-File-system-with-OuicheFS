@@ -86,19 +86,19 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		int nb_partially_blocks = 0;
 		int nb_bytes_wasted = 0;
 		int delayed_bytes_wasted = 0;
-		
+
 		// Obtenir la liste des blocks
 		bh = sb_bread(sb, ci->index_block);
 		if (!bh)
 			return -1;
 		file_block = (struct ouichefs_file_index_block *)(bh->b_data);
-		
+
 		/*
-		Boucle pour calculer 
-		- le nombre de blocks utilisés
-		- le nombre de blocks partiels
-		- le nombre d'octets perdu dû à la fragmentation
-		*/
+		 *Boucle pour calculer
+		 *- le nombre de blocks utilisés
+		 *- le nombre de blocks partiels
+		 *- le nombre d'octets perdu dû à la fragmentation
+		 */
 		for (int i = 0; i < vfs_inode->i_blocks; i++) {
 			if (file_block->blocks[i] == 0)
 				break;
@@ -124,11 +124,11 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			nb_partially_blocks);
 		pr_info("Nombre d'octets perdus du a la fragmentation = %d\n",
 			nb_bytes_wasted);
-		
+
 		/*
-		Boucle pour afficher le nombre d'octets utilisés et 
-		le numero de bloc
-		*/
+		 *Boucle pour afficher le nombre d'octets utilisés et
+		 *le numero de bloc
+		 */
 		for (int i = 0; i < vfs_inode->i_blocks; i++) {
 			if (!file_block->blocks[i])
 				break;
@@ -158,11 +158,11 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			(struct ouichefs_file_index_block *)(bh_arriere->b_data);
 
 		int i_avant, i_arriere;
-		
+
 		/*
-		Boucle qui parcourt toute la liste de bloc 
-		pour maximiser l'espace
-		*/
+		 *Boucle qui parcourt toute la liste de bloc
+		 *pour maximiser l'espace
+		 */
 		for (i_avant = 0, i_arriere = 0;
 		     i_arriere < vfs_inode->i_blocks - 1;) {
 			used_size_arriere = file_block->blocks[i_arriere];
@@ -223,7 +223,7 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 						file_block->blocks[i + 1];
 				}
 
-			// cas où le block arrière ne peut pas accueillir toutes les données du block avant
+				// cas où le block arrière ne peut pas accueillir toutes les données du block avant
 			} else {
 				// Copie les octets disponible dans le bloc actuel
 				memcpy(bh_arriere->b_data + used_size_arriere,

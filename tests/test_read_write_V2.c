@@ -70,19 +70,20 @@ int main(void)
 
 	memset(buf, 0, SIZE);
 
-	/* 
-	On devrait obtenir "Je suis à l'offset 4090" 
-	sauf que "Je sui" n'est pas recopier dans le bloc
-	car probleme de recopie dû à l'utilisation de strlen
-	*/
 	/*
-	lseek(fd, 4096 + 4090, SEEK_SET);
-	read(fd, buf, 23);
-	printf("%s\n", buf);
+	 *On devrait obtenir "Je suis à l'offset 4090"
+	 *sauf que "Je sui" n'est pas recopier dans le bloc
+	 *car probleme de recopie dû à l'utilisation de strlen
+	 */
 
-	memset(buf, 0, SIZE);
-	*/
-	
+	/*
+	 *lseek(fd, 4096 + 4090, SEEK_SET);
+	 *read(fd, buf, 23);
+	 *printf("%s\n", buf);
+	 *
+	 *memset(buf, 0, SIZE);
+	 */
+
 	// Insertion fin du bloc et creation nouveau bloc
 	lseek(fd, 4096 * 2, SEEK_SET);
 	write(fd, "Nouveau bloc", 12);
