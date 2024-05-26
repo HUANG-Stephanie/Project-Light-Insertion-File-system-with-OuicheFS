@@ -337,7 +337,6 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 				return -1;
 			memset(bh3->b_data, 0, sb->s_blocksize);
 			mark_buffer_dirty(bh3);
-			sync_dirty_buffer(bh3);
 			brelse(bh3);
 
 			// Calcul du numero de bloc
@@ -401,7 +400,6 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 				return -1;
 			}
 			mark_buffer_dirty(bh3);
-			sync_dirty_buffer(bh3);
 			brelse(bh3);
 
 			// Calcul du numero de bloc
@@ -433,7 +431,6 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 				return -1;
 			}
 			mark_buffer_dirty(bh2);
-			sync_dirty_buffer(bh2);
 
 			// Ajout de padding entre size_used et offset
 			int size_used_to_offset = offset - size_used;
@@ -473,7 +470,6 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 		memcpy(bh3->b_data + (*ppos % sb->s_blocksize) + len, buf,
 		       (size_t)strlen(buf));
 		mark_buffer_dirty(bh3);
-		sync_dirty_buffer(bh3);
 		brelse(bh3);
 
 	} else {
@@ -487,7 +483,6 @@ ssize_t ouichefs_write(struct file *file, const char __user *user_buf,
 		memset(bh3->b_data, 0, sb->s_blocksize);
 		memcpy(bh3->b_data, buf, (size_t)strlen(buf));
 		mark_buffer_dirty(bh3);
-		sync_dirty_buffer(bh3);
 		brelse(bh3);
 
 		// Calcul du numero de bloc
