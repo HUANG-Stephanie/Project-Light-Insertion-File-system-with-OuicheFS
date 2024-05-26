@@ -61,7 +61,6 @@ static struct file_system_type ouichefs_file_system_type = {
 
 long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	// Recupere le file descriptor
 	int fd = (int)arg;
 	struct file *data = fget(fd);
 
@@ -87,18 +86,11 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		int nb_bytes_wasted = 0;
 		int delayed_bytes_wasted = 0;
 
-		// Obtenir la liste des blocks
 		bh = sb_bread(sb, ci->index_block);
 		if (!bh)
 			return -1;
 		file_block = (struct ouichefs_file_index_block *)(bh->b_data);
 
-		/*
-		 *Boucle pour calculer
-		 *- le nombre de blocks utilisés
-		 *- le nombre de blocks partiels
-		 *- le nombre d'octets perdu dû à la fragmentation
-		 */
 		for (int i = 0; i < vfs_inode->i_blocks; i++) {
 			if (file_block->blocks[i] == 0)
 				break;
@@ -125,10 +117,6 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		pr_info("Nombre d'octets perdus du a la fragmentation = %d\n",
 			nb_bytes_wasted);
 
-		/*
-		 *Boucle pour afficher le nombre d'octets utilisés et
-		 *le numero de bloc
-		 */
 		for (int i = 0; i < vfs_inode->i_blocks; i++) {
 			if (!file_block->blocks[i])
 				break;
@@ -159,10 +147,6 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		int i_avant, i_arriere;
 
-		/*
-		 *Boucle qui parcourt toute la liste de bloc
-		 *pour maximiser l'espace
-		 */
 		for (i_avant = 0, i_arriere = 0;
 		     i_arriere < vfs_inode->i_blocks - 1;) {
 			used_size_arriere = file_block->blocks[i_arriere];
@@ -184,7 +168,13 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 			i_avant = i_arriere + 1;
 
-			// recupérer les infos sur les blocs
+			used_size_avant = file_block->blocks[i_avant];
+			used_size_avant = TAILLE_BLOCK(used_size_avant);
+
+			if (file_block->blocks[i_avant] == 0)
+				break;
+
+			// recupérer les infos sur les blocks et les blocks eux mêmes
 			used_size_arriere = file_block->blocks[i_arriere];
 			used_size_avant = file_block->blocks[i_avant];
 			nb_block_arriere = file_block->blocks[i_arriere];
@@ -198,7 +188,6 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			bh_arriere = sb_bread(sb, nb_block_arriere);
 			bh_avant = sb_bread(sb, nb_block_avant);
 
-			// Octets disponible dans le bloc actuel
 			dispo_arriere = OUICHEFS_BLOCK_SIZE - used_size_arriere;
 
 			// cas où le block arrière peut accueillir toutes les données du block avant
@@ -206,7 +195,6 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				memcpy(bh_arriere->b_data + used_size_arriere,
 				       bh_avant->b_data, used_size_avant);
 				mark_buffer_dirty(bh_arriere);
-				sync_dirty_buffer(bh_arriere);
 				put_block(sbi, nb_block_avant);
 				file_block->blocks[i_avant] = 0;
 
@@ -216,29 +204,25 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 					(used_size_arriere + used_size_avant));
 				file_block->blocks[i_arriere] = num_block;
 
-				// Decalage de tous les blocs si un bloc est libéré
+				// Decalage de tous les blocs
 				for (int i = i_avant; i < vfs_inode->i_blocks;
 				     i++) {
 					file_block->blocks[i] =
 						file_block->blocks[i + 1];
 				}
-
+				vfs_inode->i_blocks--;
 				// cas où le block arrière ne peut pas accueillir toutes les données du block avant
 			} else {
-				// Copie les octets disponible dans le bloc actuel
 				memcpy(bh_arriere->b_data + used_size_arriere,
 				       bh_avant->b_data, dispo_arriere);
-				// Recopie du reste de la donnée dans son propre bloc
 				memcpy(bh_avant->b_data,
 				       bh_avant->b_data + dispo_arriere,
 				       (used_size_avant - dispo_arriere));
-				// Reset les octets apres le reste recopié
 				memset(bh_avant + (used_size_avant -
 						   dispo_arriere),
 				       0,
 				       OUICHEFS_BLOCK_SIZE - (used_size_avant -
 							      dispo_arriere));
-				// Calcul des numéros stockés dans la liste
 				file_block->blocks[i_arriere] =
 					NB_BLOCK_WITH_SIZE(nb_block_arriere,
 							   (used_size_arriere +
@@ -249,8 +233,6 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 							    dispo_arriere));
 				mark_buffer_dirty(bh_arriere);
 				mark_buffer_dirty(bh_avant);
-				sync_dirty_buffer(bh_arriere);
-				sync_dirty_buffer(bh_avant);
 				i_arriere++;
 			}
 			brelse(bh_arriere);

@@ -134,7 +134,6 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				memcpy(bh_arriere->b_data + used_size_arriere,
 				       bh_avant->b_data, used_size_avant);
 				mark_buffer_dirty(bh_arriere);
-				sync_dirty_buffer(bh_arriere);
 				put_block(sbi, nb_block_avant);
 				file_block->blocks[i_avant] = 0;
 
@@ -150,7 +149,7 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 					file_block->blocks[i] =
 						file_block->blocks[i + 1];
 				}
-
+				vfs_inode->i_blocks--;
 				// cas où le block arrière ne peut pas accueillir toutes les données du block avant
 			} else {
 				memcpy(bh_arriere->b_data + used_size_arriere,
@@ -173,8 +172,6 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 							    dispo_arriere));
 				mark_buffer_dirty(bh_arriere);
 				mark_buffer_dirty(bh_avant);
-				sync_dirty_buffer(bh_arriere);
-				sync_dirty_buffer(bh_avant);
 				i_arriere++;
 			}
 			brelse(bh_arriere);
